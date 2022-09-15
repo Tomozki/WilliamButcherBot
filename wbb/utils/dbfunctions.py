@@ -57,7 +57,7 @@ restart_stagedb = db.restart_stage
 flood_toggle_db = db.flood_toggle
 rssdb = db.rss
 chatbotdb = db.chatbot
-
+rankingsdb = db.rankings
 
 def obj_to_str(obj):
     if not obj:
@@ -710,6 +710,30 @@ async def flood_off(chat_id: int):
         return
     return await flood_toggle_db.insert_one({"chat_id": chat_id})
 
+
+async def get_chat_points(chat_id: int):
+    points = await rankingsdb.find_one({"chat_id": chat_id})
+
+    if not points:
+        return {}
+
+    points.pop("_id")
+    points.pop("chat_id")
+
+    new_points = {}
+
+    for k,v in points.items():
+        new_points[int(k)] = v
+    return new_points
+
+
+async def increment_user_points(chat_id: int, user_id: int, count: int):
+    points = await get_chat_points(chat_id)
+    return await rankingsdb.update_one(
+            {"chat_id": chat_id},
+            {"$inc": {str(user_id): count}},
+            upsert=True,
+        )
 
 async def add_rss_feed(chat_id: int, url: str, last_title: str):
     return await rssdb.update_one(
